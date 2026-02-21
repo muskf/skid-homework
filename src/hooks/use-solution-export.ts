@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { type FileItem, type Solution } from "@/store/problems-store";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
 
 export interface OrderedSolution {
   item: FileItem;
@@ -102,8 +103,88 @@ export function useSolutionExport(orderedSolutions: OrderedSolution[]) {
     }
   }, [buildMarkdownDocument, exportableSolutions.length, t]);
 
+  const handleExportPdf = useCallback(() => {
+    if (!exportableSolutions.length) {
+      toast.error(t("export.empty.title"), {
+        description: t("export.empty.description"),
+      });
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      let y = 10;
+      const margin = 10;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const lineHeight = 7;
+
+      doc.setFontSize(20);
+      doc.text(t("export.document-title"), margin, y);
+      y += lineHeight * 2;
+
+      exportableSolutions.forEach((entry, pageIdx) => {
+        if (y > 250) {
+          doc.addPage();
+          y = 10;
+        }
+
+        doc.setFontSize(16);
+        doc.text(
+          t("export.page-heading", {
+            index: pageIdx + 1,
+            name: entry.item.displayName,
+          }),
+          margin,
+          y,
+        );
+        y += lineHeight * 1.5;
+
+        entry.solutions.problems.forEach((problem, probIdx) => {
+          doc.setFontSize(14);
+          doc.text(
+            t("export.problem-heading", { index: probIdx + 1 }),
+            margin,
+            y,
+          );
+          y += lineHeight;
+
+          doc.setFontSize(12);
+          const content = [
+            `${t("export.problem-label")}: ${problem.problem}`,
+            `${t("export.answer-label")}: ${problem.answer}`,
+            `${t("export.explanation-label")}: ${problem.explanation}`,
+          ].join("\n\n");
+
+          const lines = doc.splitTextToSize(content, pageWidth - margin * 2);
+          lines.forEach((line: string) => {
+            if (y > 280) {
+              doc.addPage();
+              y = 10;
+            }
+            doc.text(line, margin, y);
+            y += lineHeight;
+          });
+          y += lineHeight;
+        });
+      });
+
+      doc.save(`${t("export.filename-prefix")}-${timestamp}.pdf`);
+
+      toast.success(t("export.success.title"), {
+        description: t("export.success.description"),
+      });
+    } catch (error) {
+      console.error("Failed to export PDF", error);
+      toast.error(t("export.error.title"), {
+        description: t("export.error.description"),
+      });
+    }
+  }, [exportableSolutions, t]);
+
   return {
     handleExportMarkdown,
+    handleExportPdf,
     hasExportableContent: exportableSolutions.length > 0,
   };
 }

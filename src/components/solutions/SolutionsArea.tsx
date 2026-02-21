@@ -76,7 +76,7 @@ export default function SolutionsArea() {
   ]);
 
   // 4. Export Logic
-  const { handleExportMarkdown, hasExportableContent } =
+  const { handleExportMarkdown, handleExportPdf, hasExportableContent } =
     useSolutionExport(orderedSolutions);
 
   // 5. Image Navigation Handlers
@@ -132,6 +132,14 @@ export default function SolutionsArea() {
             disabled={!hasExportableContent}
           >
             {t("export.button")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPdf}
+            disabled={!hasExportableContent}
+          >
+            PDF
           </Button>
         </CardAction>
       </CardHeader>
